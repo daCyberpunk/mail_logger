@@ -17,7 +17,7 @@ module.tx_maillogger {
 
   settings {
     # Technical exceptions receiver
-    exceptionMail = support@pluswerk.ag
+    exceptionMail =
     cleanup {
       lifetime = 30 days
       anonymize = 1
@@ -37,14 +37,14 @@ module.tx_maillogger {
       # Redirect all mails from mail_logger to specific mail addresses
       mail {
         # Set enable to '1' to enable this mail debug feature
-        enable = 0
+        enable = 1
 
         # Specify your ip (comma separated) or set to all '*'
         ip = 127.0.0.1, 123.123.123.123
         #ip = *
 
         # Set the mail addresses (comma separated) to which the mails should be redirected
-        mailRedirect = test@domain.com, a@b.de
+        mailRedirect =
       }
     }
   }

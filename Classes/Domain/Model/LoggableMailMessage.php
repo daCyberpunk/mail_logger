@@ -47,14 +47,18 @@ class LoggableMailMessage extends DebuggableMailMessage
         $mailLogRepository->add($this->mailLog);
         GeneralUtility::makeInstance(PersistenceManager::class)->persistAll();
 
-        // send mail
-        $result = parent::send();
+        if ($this->sendMessage()) {
+            // send mail
+            $result = parent::send();
+            // write result to log after send
+            $this->assignMailLog();
+            $this->mailLog->setResult($result);
+            $mailLogRepository->update($this->mailLog);
+            return $result;
+        }
 
-        // write result to log after send
-        $this->assignMailLog();
-        $this->mailLog->setResult($result);
-        $mailLogRepository->update($this->mailLog);
-        return $result;
+       return 1;
+
     }
 
     /**
@@ -95,5 +99,70 @@ class LoggableMailMessage extends DebuggableMailMessage
             }
         }
         return utf8_decode(utf8_encode(quoted_printable_decode($string)));
+    }
+
+    /**
+     * Check if message is allowed to be forwarded.
+     *
+     * @param Swift_Mime_Message $message
+     *
+     * @return bool
+     */
+    protected function sendMessage()
+    {
+        $sendAsEmail = true;
+        foreach ($this->getTo() as $key => $value) {
+            $check = true;
+            if (empty($value)) {
+                $check = $this->isValidDebugEmailAddress($key);
+            } else {
+                $check = $this->isValidDebugEmailAddress($key);
+            }
+            if ($check === false) {
+                return false;
+            }
+        }
+
+        $bcc = $this->getBcc();
+        $bcc = !is_array($bcc) ? [] : $bcc;
+        foreach ($bcc as $key => $value) {
+            $check = true;
+            if (empty($value)) {
+                $check = $this->isValidDebugEmailAddress($key);
+            } else {
+                $check = $this->isValidDebugEmailAddress($value);
+            }
+            if ($check === false) {
+                return false;
+            }
+        }
+        //var_dump($sendAsEmail);die;
+        return $sendAsEmail;
+    }
+
+    /**
+     * Check given email address against some patterns.
+     *
+     * @param string $email
+     *
+     * @return bool
+     */
+    protected function isValidDebugEmailAddress($email)
+    {
+        $settings = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['mail_logger']);
+
+        if (!is_array($settings) || $settings['logAndSendAllMails']) {
+            return true;
+        }
+
+        $allowedChecks = GeneralUtility::trimExplode(',', $settings['addresses'], true);
+
+        foreach ($allowedChecks as $singleCheck) {
+            if ($email === $singleCheck || ($singleCheck === substr($email, (-1) * strlen($singleCheck)))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
